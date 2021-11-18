@@ -265,13 +265,8 @@ class _BetterPlayerState extends State<BetterPlayer>
   }
 
   Widget _buildPlayer() {
-    return VisibilityDetector(
-      key: Key("${widget.controller.hashCode}_key"),
-      onVisibilityChanged: (VisibilityInfo info) =>
-          widget.controller.onPlayerVisibilityChanged(info.visibleFraction),
-      child: BetterPlayerWithControls(
-        controller: widget.controller,
-      ),
+    return BetterPlayerWithControls(
+      controller: widget.controller,
     );
   }
 
