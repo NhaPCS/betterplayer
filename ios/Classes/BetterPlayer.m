@@ -33,6 +33,10 @@ AVPictureInPictureController *_pipController;
         _player.automaticallyWaitsToMinimizeStalling = false;
     }
     self._observersAdded = false;
+    [[AVAudioSession sharedInstance] setActive: YES error: nil];
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+
+    [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     return self;
 }
 
@@ -64,6 +68,14 @@ AVPictureInPictureController *_pipController;
                                                  selector:@selector(itemDidPlayToEndTime:)
                                                      name:AVPlayerItemDidPlayToEndTimeNotification
                                                    object:item];
+ [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(appWillResignActive:)
+                                                     name:UIApplicationDidEnterBackgroundNotification
+                                                   object:nil];
+[[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(appWillGoForeground:)
+                                                     name:UIApplicationWillEnterForegroundNotification
+                                                   object:nil];
         self._observersAdded = true;
     }
 }
@@ -88,25 +100,33 @@ AVPictureInPictureController *_pipController;
 }
 
 - (void) removeObservers{
+
+ @try {
     if (self._observersAdded){
-        [_player removeObserver:self forKeyPath:@"rate" context:nil];
-        [[_player currentItem] removeObserver:self forKeyPath:@"status" context:statusContext];
-        [[_player currentItem] removeObserver:self forKeyPath:@"presentationSize" context:presentationSizeContext];
-        [[_player currentItem] removeObserver:self
-                                   forKeyPath:@"loadedTimeRanges"
-                                      context:timeRangeContext];
-        [[_player currentItem] removeObserver:self
-                                   forKeyPath:@"playbackLikelyToKeepUp"
-                                      context:playbackLikelyToKeepUpContext];
-        [[_player currentItem] removeObserver:self
-                                   forKeyPath:@"playbackBufferEmpty"
-                                      context:playbackBufferEmptyContext];
-        [[_player currentItem] removeObserver:self
-                                   forKeyPath:@"playbackBufferFull"
-                                      context:playbackBufferFullContext];
-        [[NSNotificationCenter defaultCenter] removeObserver:self];
-        self._observersAdded = false;
-    }
+            [_player removeObserver:self forKeyPath:@"rate" context:nil];
+            [[_player currentItem] removeObserver:self forKeyPath:@"status" context:statusContext];
+            [[_player currentItem] removeObserver:self forKeyPath:@"presentationSize" context:presentationSizeContext];
+            [[_player currentItem] removeObserver:self
+                                       forKeyPath:@"loadedTimeRanges"
+                                          context:timeRangeContext];
+            [[_player currentItem] removeObserver:self
+                                       forKeyPath:@"playbackLikelyToKeepUp"
+                                          context:playbackLikelyToKeepUpContext];
+            [[_player currentItem] removeObserver:self
+                                       forKeyPath:@"playbackBufferEmpty"
+                                          context:playbackBufferEmptyContext];
+            [[_player currentItem] removeObserver:self
+                                       forKeyPath:@"playbackBufferFull"
+                                          context:playbackBufferFullContext];
+            [[NSNotificationCenter defaultCenter] removeObserver:self];
+            self._observersAdded = false;
+        }
+ }
+ @catch (NSException *exception) {
+ }
+ @finally {
+ }
+
 }
 
 - (void)itemDidPlayToEndTime:(NSNotification*)notification {
@@ -120,6 +140,19 @@ AVPictureInPictureController *_pipController;
 
         }
     }
+}
+
+- (void)appWillResignActive:(NSNotification*)notification {
+        [self._playerLayer removeFromSuperlayer];
+        self._playerLayer = nil;
+NSLog(@"appWillResignActive:");
+}
+
+- (void)appWillGoForeground:(NSNotification*)notification {
+    self._playerLayer.player = _player;
+NSLog(@"appWillGoForeground:");
+// [self._playerLayer removeFromSuperlayer];
+//  self._playerLayer = nil;
 }
 
 
@@ -166,7 +199,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         fps = (int) ceil(nominalFrameRate);
     }
     videoComposition.frameDuration = CMTimeMake(1, fps);
-    
+
     return videoComposition;
 }
 
@@ -200,7 +233,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     if (headers == [NSNull null] || headers == NULL){
         headers = @{};
     }
-    
+
     AVPlayerItem* item;
     if (useCache){
         if (cacheKey == [NSNull null]){
@@ -209,7 +242,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         if (videoExtension == [NSNull null]){
             videoExtension = nil;
         }
-        
+
         item = [cacheManager getCachingPlayerItemForNormalPlayback:url cacheKey:cacheKey videoExtension: videoExtension headers:headers];
     } else {
         AVURLAsset* asset = [AVURLAsset URLAssetWithURL:url
@@ -627,6 +660,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     [self disablePictureInPicture];
     [self usePlayerLayer:frame];
 }
+static NSString *const readyForDisplayKeyPath = @"readyForDisplay";
 
 - (void)usePlayerLayer: (CGRect) frame
 {
@@ -637,7 +671,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
         UIViewController* vc = [[[UIApplication sharedApplication] keyWindow] rootViewController];
         self._playerLayer.frame = frame;
         self._playerLayer.needsDisplayOnBoundsChange = YES;
-        //  [self._playerLayer addObserver:self forKeyPath:readyForDisplayKeyPath options:NSKeyValueObservingOptionNew context:nil];
+         [self._playerLayer addObserver:self forKeyPath:readyForDisplayKeyPath options:NSKeyValueObservingOptionNew context:nil];
         [vc.view.layer addSublayer:self._playerLayer];
         vc.view.layer.needsDisplayOnBoundsChange = YES;
         if (@available(iOS 9.0, *)) {
