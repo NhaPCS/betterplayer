@@ -151,8 +151,8 @@ NSLog(@"appWillResignActive:");
 - (void)appWillGoForeground:(NSNotification*)notification {
     self._playerLayer.player = _player;
 NSLog(@"appWillGoForeground:");
-// [self._playerLayer removeFromSuperlayer];
-//  self._playerLayer = nil;
+[self._playerLayer removeFromSuperlayer];
+ self._playerLayer = nil;
 }
 
 
