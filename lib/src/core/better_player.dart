@@ -116,8 +116,6 @@ class _BetterPlayerState extends State<BetterPlayer>
     WidgetsBinding.instance!.removeObserver(this);
     _controllerEventSubscription?.cancel();
     widget.controller.dispose();
-    VisibilityDetectorController.instance
-        .forget(Key("${widget.controller.hashCode}_key"));
     super.dispose();
   }
 

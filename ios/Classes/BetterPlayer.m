@@ -48,6 +48,7 @@ AVPictureInPictureController *_pipController;
 
 - (void)addObservers:(AVPlayerItem*)item {
     if (!self._observersAdded){
+    NSLog(@"_observersAdded:");
         [_player addObserver:self forKeyPath:@"rate" options:0 context:nil];
         [item addObserver:self forKeyPath:@"loadedTimeRanges" options:0 context:timeRangeContext];
         [item addObserver:self forKeyPath:@"status" options:0 context:statusContext];
@@ -270,37 +271,27 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     _isStalledCheckStarted = false;
     _playerRate = 1;
     [_player replaceCurrentItemWithPlayerItem:item];
-
+    NSLog(@"setDataSourcePlayerItem:");
     AVAsset* asset = [item asset];
-    void (^assetCompletionHandler)(void) = ^{
-        if ([asset statusOfValueForKey:@"tracks" error:nil] == AVKeyValueStatusLoaded) {
-            NSArray* tracks = [asset tracksWithMediaType:AVMediaTypeVideo];
-            if ([tracks count] > 0) {
-                AVAssetTrack* videoTrack = tracks[0];
-                void (^trackCompletionHandler)(void) = ^{
-                    if (self->_disposed) return;
-                    if ([videoTrack statusOfValueForKey:@"preferredTransform"
-                                                  error:nil] == AVKeyValueStatusLoaded) {
-                        // Rotate the video by using a videoComposition and the preferredTransform
-                        self->_preferredTransform = [self fixTransform:videoTrack];
-                        // Note:
-                        // https://developer.apple.com/documentation/avfoundation/avplayeritem/1388818-videocomposition
-                        // Video composition can only be used with file-based media and is not supported for
-                        // use with media served using HTTP Live Streaming.
-                        AVMutableVideoComposition* videoComposition =
-                        [self getVideoCompositionWithTransform:self->_preferredTransform
-                                                     withAsset:asset
-                                                withVideoTrack:videoTrack];
-                        item.videoComposition = videoComposition;
-                    }
-                };
-                [videoTrack loadValuesAsynchronouslyForKeys:@[ @"preferredTransform" ]
-                                          completionHandler:trackCompletionHandler];
-            }
-        }
-    };
 
-    [asset loadValuesAsynchronouslyForKeys:@[ @"tracks" ] completionHandler:assetCompletionHandler];
+//    NSLog(@"setDataSourcePlayerItem :: %@", asset.isPlayable);
+
+//   if (self->_disposed) return;
+//                       if ([videoTrack statusOfValueForKey:@"preferredTransform"
+//                                                     error:nil] == AVKeyValueStatusLoaded) {
+//                           // Rotate the video by using a videoComposition and the preferredTransform
+//                           self->_preferredTransform = [self fixTransform:videoTrack];
+//                           // Note:
+//                           // https://developer.apple.com/documentation/avfoundation/avplayeritem/1388818-videocomposition
+//                           // Video composition can only be used with file-based media and is not supported for
+//                           // use with media served using HTTP Live Streaming.
+//                           AVMutableVideoComposition* videoComposition =
+//                           [self getVideoCompositionWithTransform:self->_preferredTransform
+//                                                        withAsset:asset
+//                                                   withVideoTrack:videoTrack];
+//                           item.videoComposition = videoComposition;
+//                       }
+//     [asset loadValuesAsynchronouslyForKeys:@[ @"duration" ] completionHandler:assetCompletionHandler];
     [self addObservers:item];
 }
 
@@ -313,6 +304,9 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 }
 
 -(void)startStalledCheck{
+
+   NSLog(@"startStalledCheck:");
+   NSLog(@"startStalledCheck:", [self availableDuration]);
     if (_player.currentItem.playbackLikelyToKeepUp ||
         [self availableDuration] - CMTimeGetSeconds(_player.currentItem.currentTime) > 10.0) {
         [self play];
@@ -351,6 +345,10 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
                       ofObject:(id)object
                         change:(NSDictionary*)change
                        context:(void*)context {
+ AVPlayerItem* item = (AVPlayerItem*)object;
+//    NSLog(@"words :: %@", item.status);0
+    NSLog(@"path :: %@", path);
+    NSLog(@"observeValueForKeyPath:");
 
     if ([path isEqualToString:@"rate"]) {
         if (@available(iOS 10.0, *)) {
@@ -409,6 +407,9 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
 
     else if (context == statusContext) {
         AVPlayerItem* item = (AVPlayerItem*)object;
+        NSLog(@"%@", item.errorLog);
+                   NSLog(@"AVPlayerItem:");
+                 NSLog(@"%@", item.error.code);
         switch (item.status) {
             case AVPlayerItemStatusFailed:
                 NSLog(@"Failed to load video:");
